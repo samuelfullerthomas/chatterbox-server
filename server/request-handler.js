@@ -11,8 +11,15 @@ this file and include it in basic-server.js so that it actually works.
 *Hint* Check out the node module documentation at http://nodejs.org/api/modules.html.
 
 **************************************************************/
+var fs = require('fs');
+//exports.variable = gottendata
 
-var requestHandler = function(request, response) {
+exports.requestHandler = function(request, response) {
+  //Request is an instance of the  http.IncomingMessage class, 
+  //and has a bunch of methods
+  //Response is an instance of the http.ServerResponse class
+  //also has a bunch of methods
+
   // Request and Response come from node's http module.
   //
   // They include information about both the incoming request, such as
@@ -27,19 +34,43 @@ var requestHandler = function(request, response) {
   // Adding more logging to your server can be an easy way to get passive
   // debugging help, but you should always be careful about leaving stray
   // console.logs in your code.
-  console.log("Serving request type " + request.method + " for url " + request.url);
 
   // The outgoing status.
   var statusCode = 200;
+  var gottenData = '';
 
+  var chats = fs.createWriteStream('chats.txt', {'flags': 'a'})
+  var read = fs.readFile('chats.txt');
   // See the note below about CORS headers.
   var headers = defaultCorsHeaders;
+  console.log("Serving request type " + request.method + " for url " + request.url);
+
+  //fs write (pushes) request.headers.data as an object to chats
 
   // Tell the client we are sending them plain text.
-  //
   // You will need to change this if you are sending something
   // other than plain text, like JSON or HTML.
   headers['Content-Type'] = "text/plain";
+  request.on("data", function(data){
+    // console.log(data.toString());
+    // gottenData = data.toString();
+    gottenData += data + ",";
+    console.log(gottenData)
+    // gottenData += data.toString();
+    //console.log(gottenData)
+    // add data to chats (writestream)
+  })
+  
+  request.on('end', function() {
+    chats.end(gottenData)
+  })
+
+
+  //.on('end', function() {
+  //  chats.write(gottenData)
+  //});
+  // chats.chats.push(gottenData);
+
 
   // .writeHead() writes to the request line and headers of the response,
   // which includes the status and all headers.
@@ -52,7 +83,8 @@ var requestHandler = function(request, response) {
   //
   // Calling .end "flushes" the response's internal buffer, forcing
   // node to actually send all the data over to the client.
-  response.end("Hello, World!");
+  response.end("[" + read + "{}]");
+  //response is JSON.stringify of chats
 };
 
 // These headers will allow Cross-Origin Resource Sharing (CORS).
@@ -67,7 +99,8 @@ var requestHandler = function(request, response) {
 var defaultCorsHeaders = {
   "access-control-allow-origin": "*",
   "access-control-allow-methods": "GET, POST, PUT, DELETE, OPTIONS",
-  "access-control-allow-headers": "content-type, accept",
+  "access-control-allow-headers": "contentType, accept, data, Content-Type",
   "access-control-max-age": 10 // Seconds.
+  //need to allow all headers, e.g. data.
 };
 

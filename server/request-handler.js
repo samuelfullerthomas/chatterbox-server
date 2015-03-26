@@ -36,55 +36,98 @@ exports.requestHandler = function(request, response) {
   // console.logs in your code.
 
   // The outgoing status.
+  // response.end('A get request')
+  console.log(request.url)
+  console.log(request.method)
+  var read = fs.readFileSync('chats.txt');
+  var defaultCorsHeaders = {
+    "access-control-allow-origin": "*",
+    "access-control-allow-methods": "GET, POST, PUT, DELETE, OPTIONS",
+    "access-control-allow-headers": "contentType, accept, data, Content-Type",
+    "access-control-max-age": 10 // Seconds.
+    //need to allow all headers, e.g. data.
+  };
   var statusCode = 200;
   var gottenData = '';
-
   var chats = fs.createWriteStream('chats.txt', {'flags': 'a'})
-  var read = fs.readFile('chats.txt');
   // See the note below about CORS headers.
   var headers = defaultCorsHeaders;
-  console.log("Serving request type " + request.method + " for url " + request.url);
 
-  //fs write (pushes) request.headers.data as an object to chats
-
-  // Tell the client we are sending them plain text.
-  // You will need to change this if you are sending something
-  // other than plain text, like JSON or HTML.
-  headers['Content-Type'] = "text/plain";
-  request.on("data", function(data){
-    // console.log(data.toString());
-    // gottenData = data.toString();
-    gottenData += data + ",";
-    console.log(gottenData)
-    // gottenData += data.toString();
-    //console.log(gottenData)
-    // add data to chats (writestream)
-  })
-  
-  request.on('end', function() {
-    chats.end(gottenData)
-  })
+  if (request.method === 'GET'){
+    if(request.url === '/') {
 
 
-  //.on('end', function() {
-  //  chats.write(gottenData)
-  //});
-  // chats.chats.push(gottenData);
 
+      response.writeHead(200, {'Content-Type': 'text/html'})
+      response.end(fs.readFileSync('client/index.html'))
+     } else {
+      console.log("Serving request type " + request.method + " for url " + request.url);
 
-  // .writeHead() writes to the request line and headers of the response,
-  // which includes the status and all headers.
-  response.writeHead(statusCode, headers);
+      var urlText = request.url
+      var typeIndex = urlText.lastIndexOf('.')
+      var type = urlText.substring(typeIndex+1)
 
-  // Make sure to always call response.end() - Node may not send
-  // anything back to the client until you do. The string you pass to
-  // response.end() will be the body of the response - i.e. what shows
-  // up in the browser.
-  //
-  // Calling .end "flushes" the response's internal buffer, forcing
-  // node to actually send all the data over to the client.
-  response.end("[" + read + "{}]");
-  //response is JSON.stringify of chats
+      //need to create an object/map for type -> correct MIME type
+      var typeMap = {js : "text/javascript", html: "text/html", css: "text/css"}
+
+      // Tell the client we are sending them plain text.
+      // You will need to change this if you are sending something
+      // other than plain text, like JSON or HTML.
+
+      if (request.url === 'chats.txt') {
+        headers['Content-Type'] = "text/plain";    
+        response.writeHead(statusCode, headers);
+        response.end('{ "results" : [' + read.slice(0, read.length-1) + ']}')  
+      } else {
+        headers['Content-Type'] = typeMap[type];    
+        response.writeHead(statusCode, headers);
+        console.log('trying ',__dirname+'/client'+request.url)
+        var fullUrl = __dirname+'/client'+request.url
+        console.log(fullUrl)
+        response.end()
+      }
+    }
+  }
+  else if (request.method === 'POST'){
+    console.log("Serving request type " + request.method + " for url " + request.url);
+
+    // Tell the client we are sending them plain text.
+    // You will need to change this if you are sending something
+    // other than plain text, like JSON or HTML.
+    headers['Content-Type'] = "text/plain";
+    request.on("data", function(data){
+      gottenData += data + ",";
+      console.log(gottenData)
+    })
+    
+    request.on('end', function() {
+      chats.end(gottenData)
+    })
+    response.writeHead(statusCode, headers);
+
+    // Make sure to always call response.end() - Node may not send
+    // anything back to the client until you do. The string you pass to
+    // response.end() will be the body of the response - i.e. what shows
+    // up in the browser.
+    //
+    // Calling .end "flushes" the response's internal buffer, forcing
+    // node to actually send all the data over to the client.
+    var read = fs.readFileSync('chats.txt');
+    // response.end('{"results" :[' + read.slice(0, read.length-1) + "]}");
+    response.end('post')
+
+  }
+  else if (request.method === 'OPTIONS') {
+    console.log('in options')
+    response.writeHead("204", "No Content", {
+      "access-control-allow-origin": "*",
+      "access-control-allow-methods": "GET, POST, PUT, DELETE, OPTIONS",
+      "access-control-allow-headers": "contentType, accept, data, Content-Type",
+      "access-control-max-age": 10 // Seconds.
+      //need to allow all headers, e.g. data.
+    })
+    return (response.end())
+  }
 };
 
 // These headers will allow Cross-Origin Resource Sharing (CORS).
@@ -96,11 +139,4 @@ exports.requestHandler = function(request, response) {
 //
 // Another way to get around this restriction is to serve you chat
 // client from this domain by setting up static file serving.
-var defaultCorsHeaders = {
-  "access-control-allow-origin": "*",
-  "access-control-allow-methods": "GET, POST, PUT, DELETE, OPTIONS",
-  "access-control-allow-headers": "contentType, accept, data, Content-Type",
-  "access-control-max-age": 10 // Seconds.
-  //need to allow all headers, e.g. data.
-};
 
